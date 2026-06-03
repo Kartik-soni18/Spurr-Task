@@ -34,18 +34,11 @@ function getIntEnvVar(key: string, defaultValue: number): number {
   return parsed;
 }
 
-// Support both Together AI and legacy OpenAI env vars
-const togetherKey = getEnvVar("TOGETHER_API_KEY", "");
-const openaiKey = getEnvVar("OPENAI_API_KEY", "");
-
-const togetherModel = getEnvVar("TOGETHER_MODEL", "");
-const openaiModel = getEnvVar("OPENAI_MODEL", "gpt-4o-mini");
-
 export const config: Config = {
   PORT: getIntEnvVar("PORT", 3001),
-  LLM_API_KEY: togetherKey || openaiKey,
-  LLM_MODEL: togetherModel || openaiModel,
-  LLM_BASE_URL: togetherKey ? "https://api.together.xyz/v1" : undefined,
+  LLM_API_KEY: getEnvVar("OPENAI_API_KEY"),
+  LLM_MODEL: getEnvVar("OPENAI_MODEL", "gpt-4o-mini"),
+  LLM_BASE_URL: getEnvVar("OPENAI_BASE_URL", "") || undefined,
   MAX_TOKENS: getIntEnvVar("MAX_TOKENS", 500),
   DB_PATH: getEnvVar("DB_PATH", "./chat.db"),
   NODE_ENV: (getEnvVar("NODE_ENV", "development") as "development" | "production") === "production" ? "production" : "development",
@@ -54,6 +47,6 @@ export const config: Config = {
 };
 
 if (!config.LLM_API_KEY) {
-  console.error("ERROR: LLM API key is required. Set either TOGETHER_API_KEY or OPENAI_API_KEY.");
+  console.error("ERROR: OPENAI_API_KEY is required.");
   process.exit(1);
 }

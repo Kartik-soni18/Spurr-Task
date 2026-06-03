@@ -1,5 +1,6 @@
-# Render deployment configuration
-# See README.md for deployment instructions
+# Render Blueprint — deploys both backend and frontend automatically
+# Usage: Render Dashboard → Blueprints → New Blueprint Instance → connect repo
+# After deploy, manually set OPENAI_API_KEY in the backend service env vars.
 
 services:
   - type: web
@@ -14,13 +15,17 @@ services:
       - key: PORT
         value: 10000
       - key: OPENAI_API_KEY
-        sync: false  # Set manually in Render dashboard
+        sync: false  # Set manually in Render dashboard — never commit API keys
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
       - key: MAX_TOKENS
         value: "500"
       - key: FRONTEND_URL
-        value: "*"  # Update with your actual frontend URL
+        value: "*"  # Update after frontend deploy, then redeploy backend
+      - key: REDIS_URL
+        sync: false  # Optional: set if using Upstash Redis
     disk:
       name: sqlite-data
       mountPath: /opt/render/project/src/backend
@@ -33,4 +38,4 @@ services:
     staticPublishPath: build
     envVars:
       - key: VITE_API_URL
-        value: https://spur-chat-backend.onrender.com  # Update with your actual backend URL
+        value: https://spur-chat-backend.onrender.com  # Update after backend deploy
