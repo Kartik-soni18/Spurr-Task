@@ -2,7 +2,8 @@
 
 A mini AI customer support chat widget built as a take-home assignment for Spur's Founding Full-Stack Engineer role. This project simulates a real customer support chat where an AI agent answers user questions using OpenAI's GPT-4o-mini, with full conversation persistence via SQLite.
 
-**Live Demo**: [Deployment URL — add after deploying]
+**Live Demo**: [https://spur-chat-frontend-wnpt.onrender.com](https://spur-chat-frontend-wnpt.onrender.com)  
+**Backend API**: [https://spur-chat-backend-dqy8.onrender.com](https://spur-chat-backend-dqy8.onrender.com)
 
 ---
 
@@ -26,7 +27,7 @@ A mini AI customer support chat widget built as a take-home assignment for Spur'
 | Backend | Node.js 20 + TypeScript + Express 4 |
 | Database | SQLite 3 via `better-sqlite3` (WAL mode) |
 | Cache | Redis (optional, with graceful fallback) |
-| LLM | OpenAI GPT-4o-mini (configurable via `OPENAI_BASE_URL`) |
+| LLM | OpenAI GPT-4o-mini or Together AI (e.g. `meta-llama/Llama-3.3-70B-Instruct-Turbo`, configurable via `OPENAI_BASE_URL`) |
 | Validation | Zod (backend & frontend) |
 | Frontend | SvelteKit 2 + Svelte 5 + TypeScript |
 | Styling | Tailwind CSS 3 |
@@ -322,13 +323,27 @@ Health check. Returns `{ "status": "ok" }`.
 
 This project includes a `render.yaml` Blueprint for easy deployment on [Render](https://render.com).
 
-> ⚠️ **SQLite on Free Tier**: The backend uses SQLite for simplicity. On Render's free tier, the filesystem is **ephemeral** — all chat data is **lost on every redeploy or service restart**. This is acceptable for an MVP/demo, but for production you should either:
-> - Add a persistent disk to the backend service (requires a paid instance), or
-> - Switch to [Render Postgres](https://render.com/docs/databases) (free tier available)
+**Deployed URLs:**
+- **Frontend**: https://spur-chat-frontend-wnpt.onrender.com
+- **Backend**: https://spur-chat-backend-dqy8.onrender.com
+
+> ⚠️ **Non-Persistent Storage (Free Tier Limitation)**
+>
+> The backend uses **SQLite** for simplicity. On Render's free tier, the filesystem is **ephemeral** — this means:
+> - All chat conversations are **lost on every redeploy or service restart**
+> - Render free instances spin down after ~15 minutes of inactivity; when they wake up, the database is empty
+> - The `sessionId` stored in your browser's `localStorage` will refer to a conversation that no longer exists on the backend, causing errors until you clear the chat or use incognito mode
+>
+> **This is expected behavior for a free-tier MVP/demo.** For production, you should either:
+> - Add a **persistent disk** to the backend service (requires a paid instance), or
+> - Switch to **[Render Postgres](https://render.com/docs/databases)** (free tier available)
 
 ### Environment Variables
 
-After the initial Blueprint deploy, manually set `OPENAI_API_KEY` in the Render Dashboard for the backend service.
+After the initial Blueprint deploy, manually set these in the Render Dashboard for the backend service:
+- `OPENAI_API_KEY` — your API key (OpenAI or Together AI)
+- `OPENAI_BASE_URL` — e.g. `https://api.together.xyz/v1` for Together AI
+- `REDIS_URL` — optional, for Redis caching (e.g. Upstash)
 
 ---
 
