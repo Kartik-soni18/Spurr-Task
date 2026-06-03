@@ -29,7 +29,10 @@ async function rateLimitMiddleware(req: Request, res: Response, next: NextFuncti
       await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS);
     }
 
+    console.log(`[RATE LIMIT] IP=${clientIp} | count=${current}/${RATE_LIMIT_MAX} | window=${RATE_LIMIT_WINDOW_SECONDS}s`);
+
     if (current > RATE_LIMIT_MAX) {
+      console.log(`[RATE LIMIT] BLOCKED IP=${clientIp}`);
       res.status(429).json({
         error: "Too many messages. Please slow down and try again in a moment.",
       });
@@ -72,6 +75,7 @@ router.post(
       }
 
       const { message, sessionId } = parseResult.data;
+      console.log(`[REQUEST] msgLen=${message.length} | existingSession=${sessionId ? "yes" : "no"}`);
 
       if (!message || message.length === 0) {
         const error = new Error("Message is required and must be between 1 and 2000 characters");
@@ -100,6 +104,7 @@ router.post(
 
       addMessage(conversationId, "ai", reply);
 
+      console.log(`[RESPONSE] sessionId=${conversationId} | replyLen=${reply.length}`);
       res.json({ reply, sessionId: conversationId });
     } catch (err) {
       next(err);
@@ -129,6 +134,7 @@ router.get(
 
       const messages = getMessages(sessionId);
 
+      console.log(`[HISTORY] Returned ${messages.length} messages | sessionId=${sessionId}`);
       res.json({ sessionId, messages });
     } catch (err) {
       next(err);

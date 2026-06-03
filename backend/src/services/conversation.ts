@@ -8,6 +8,7 @@ export function createConversation(): string {
     "INSERT INTO conversations (id) VALUES (?)"
   );
   stmt.run(id);
+  console.log(`[DB] Created conversation | sessionId=${id}`);
   return id;
 }
 
@@ -43,6 +44,7 @@ export function addMessage(
   })();
 
   const messageId = Number(result.lastInsertRowid);
+  console.log(`[DB] Saved message | msgId=${messageId} | sessionId=${conversationId} | sender=${sender} | len=${text.length}`);
 
   const selectStmt = db.prepare(
     "SELECT id, sender, text, created_at as timestamp FROM messages WHERE id = ?"
@@ -72,6 +74,8 @@ export function getMessages(conversationId: string): ChatMessage[] {
     text: string;
     timestamp: string;
   }>;
+
+  console.log(`[DB] Loaded ${rows.length} messages | sessionId=${conversationId}`);
 
   return rows.map((row) => ({
     id: row.id,

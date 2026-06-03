@@ -69,10 +69,12 @@ export async function generateReply(
     if (redis) {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        console.log("LLM cache hit");
+        console.log(`[CACHE HIT] Returning cached LLM response (key: ${cacheKey.slice(0, 24)}...)`);
         return cached;
       }
     }
+
+    console.log(`[LLM CALL] model=${config.LLM_MODEL} | historyMessages=${recentHistory.length} | cache=${redis ? "miss" : "disabled"}`);
 
     const response = await openai.chat.completions.create({
       model: config.LLM_MODEL,
@@ -87,9 +89,11 @@ export async function generateReply(
     }
 
     if (redis) {
-      await redis.setEx(cacheKey, 3600, content); // cache for 1 hour
+      await redis.setEx(cacheKey, 3600, content);
+      console.log(`[CACHE SET] Response cached for 1 hour (key: ${cacheKey.slice(0, 24)}...)`);
     }
 
+    console.log(`[LLM OK] Response length: ${content.length} chars`);
     return content;
   } catch (error) {
     console.error("LLM error:", error);
