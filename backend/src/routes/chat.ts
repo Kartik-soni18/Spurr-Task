@@ -7,7 +7,41 @@ import {
   conversationExists,
 } from "../services/conversation.js";
 import { generateReply } from "../services/llm.js";
+import { getRedisClient } from "../redis.js";
 import type { Request, Response, NextFunction } from "express";
+
+const RATE_LIMIT_MAX = 20; // requests per window
+const RATE_LIMIT_WINDOW_SECONDS = 60; // 1 minute
+
+async function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const clientIp = req.ip || "unknown";
+  const key = `rate_limit:${clientIp}`;
+
+  const redis = await getRedisClient();
+  if (!redis) {
+    next();
+    return;
+  }
+
+  try {
+    const current = await redis.incr(key);
+    if (current === 1) {
+      await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS);
+    }
+
+    if (current > RATE_LIMIT_MAX) {
+      res.status(429).json({
+        error: "Too many messages. Please slow down and try again in a moment.",
+      });
+      return;
+    }
+
+    next();
+  } catch {
+    // If Redis fails, allow the request through rather than blocking users
+    next();
+  }
+}
 
 const router = Router();
 
@@ -24,6 +58,7 @@ const sessionIdSchema = z.string().uuid();
 
 router.post(
   "/message",
+  rateLimitMiddleware,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const parseResult = sendMessageSchema.safeParse(req.body);

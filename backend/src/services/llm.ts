@@ -1,7 +1,9 @@
+import crypto from "crypto";
 import OpenAI from "openai";
 import { config } from "../config.js";
 import type { ChatMessage } from "../types.js";
 import { buildSystemPrompt } from "./faq.js";
+import { getRedisClient } from "../redis.js";
 
 export class LLMError extends Error {
   statusCode: number;
@@ -39,6 +41,11 @@ const openai = new OpenAI({
   baseURL: config.LLM_BASE_URL,
 });
 
+function buildCacheKey(messages: Array<{ role: string; content: string }>): string {
+  const hash = crypto.createHash("sha256").update(JSON.stringify(messages)).digest("hex");
+  return `llm_cache:${hash}`;
+}
+
 export async function generateReply(
   history: ChatMessage[],
   userMessage: string
@@ -56,6 +63,17 @@ export async function generateReply(
       { role: "user" as const, content: userMessage },
     ];
 
+    const redis = await getRedisClient();
+    const cacheKey = buildCacheKey(messages);
+
+    if (redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        console.log("LLM cache hit");
+        return cached;
+      }
+    }
+
     const response = await openai.chat.completions.create({
       model: config.LLM_MODEL,
       messages,
@@ -66,6 +84,10 @@ export async function generateReply(
     const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new LLMError("Empty response from LLM", 500);
+    }
+
+    if (redis) {
+      await redis.setEx(cacheKey, 3600, content); // cache for 1 hour
     }
 
     return content;

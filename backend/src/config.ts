@@ -7,6 +7,7 @@ export interface Config {
   DB_PATH: string;
   NODE_ENV: "development" | "production";
   FRONTEND_URL: string;
+  REDIS_URL: string | undefined;
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -49,6 +50,7 @@ export const config: Config = {
   DB_PATH: getEnvVar("DB_PATH", "./chat.db"),
   NODE_ENV: (getEnvVar("NODE_ENV", "development") as "development" | "production") === "production" ? "production" : "development",
   FRONTEND_URL: getEnvVar("FRONTEND_URL", "*"),
+  REDIS_URL: getEnvVar("REDIS_URL", "") || undefined,
 };
 
 if (!config.LLM_API_KEY) {
