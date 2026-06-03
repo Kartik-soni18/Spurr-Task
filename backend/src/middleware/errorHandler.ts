@@ -23,7 +23,7 @@ export function errorHandler(
 
     case 404:
       res.status(404).json({
-        error: "Conversation not found",
+        error: err.message || "Conversation not found",
       });
       return;
 

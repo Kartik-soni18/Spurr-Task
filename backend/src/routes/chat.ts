@@ -65,9 +65,7 @@ router.post(
   rateLimitMiddleware,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      console.log("[DEBUG] req.body:", JSON.stringify(req.body));
       const parseResult = sendMessageSchema.safeParse(req.body);
-      console.log("[DEBUG] parseResult.success:", parseResult.success, "| data:", parseResult.success ? JSON.stringify(parseResult.data) : "N/A");
 
       if (!parseResult.success) {
         const issue = parseResult.error.issues[0];

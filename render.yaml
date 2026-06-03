@@ -19,7 +19,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false  # Set manually in Render dashboard — never commit API keys
       - key: OPENAI_MODEL
-        value: gpt-4o-mini
+        value: meta-llama/Llama-3.3-70B-Instruct-Turbo
       - key: OPENAI_BASE_URL
         sync: false  # e.g. https://api.openai.com/v1 or https://api.together.xyz/v1
       - key: MAX_TOKENS

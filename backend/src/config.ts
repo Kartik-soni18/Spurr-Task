@@ -37,7 +37,7 @@ function getIntEnvVar(key: string, defaultValue: number): number {
 export const config: Config = {
   PORT: getIntEnvVar("PORT", 3001),
   LLM_API_KEY: getEnvVar("OPENAI_API_KEY"),
-  LLM_MODEL: getEnvVar("OPENAI_MODEL", "gpt-4o-mini"),
+  LLM_MODEL: getEnvVar("OPENAI_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo"),
   LLM_BASE_URL: getEnvVar("OPENAI_BASE_URL", "") || undefined,
   MAX_TOKENS: getIntEnvVar("MAX_TOKENS", 500),
   DB_PATH: getEnvVar("DB_PATH", "./chat.db"),
