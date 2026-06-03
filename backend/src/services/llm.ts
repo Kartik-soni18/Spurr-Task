@@ -41,9 +41,43 @@ const openai = new OpenAI({
   baseURL: config.LLM_BASE_URL,
 });
 
-function buildCacheKey(messages: Array<{ role: string; content: string }>): string {
-  const hash = crypto.createHash("sha256").update(JSON.stringify(messages)).digest("hex");
-  return `llm_cache:${hash}`;
+function isFollowUp(message: string): boolean {
+  const lower = message.toLowerCase().trim();
+
+  const followUpPatterns = [
+    "it", "that", "this", "those", "them",
+    "what about", "how about", "and ",
+    "really", "ok", "okay", "thanks", "thank you",
+  ];
+
+  // Very short messages are likely follow-ups
+  if (lower.split(/\s+/).length <= 3) return true;
+
+  // Contains reference words
+  if (followUpPatterns.some((p) => lower.includes(p))) return true;
+
+  return false;
+}
+
+function buildCacheKey(
+  messages: Array<{ role: string; content: string }>,
+  userMessage: string,
+  followUp: boolean
+): string {
+  if (followUp) {
+    // Full context for follow-ups — includes conversation history
+    const hash = crypto.createHash("sha256").update(JSON.stringify(messages)).digest("hex");
+    return `llm_cache:ctx:${hash}`;
+  }
+
+  // Standalone — cache by message only, ignore history
+  const systemPrompt = messages.find((m) => m.role === "system")?.content || "";
+  const cachePayload = JSON.stringify([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userMessage },
+  ]);
+  const hash = crypto.createHash("sha256").update(cachePayload).digest("hex");
+  return `llm_cache:msg:${hash}`;
 }
 
 export async function generateReply(
@@ -63,18 +97,19 @@ export async function generateReply(
       { role: "user" as const, content: userMessage },
     ];
 
+    const followUp = isFollowUp(userMessage);
     const redis = await getRedisClient();
-    const cacheKey = buildCacheKey(messages);
+    const cacheKey = buildCacheKey(messages, userMessage, followUp);
 
     if (redis) {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        console.log(`[CACHE HIT] Returning cached LLM response (key: ${cacheKey.slice(0, 24)}...)`);
+        console.log(`[CACHE HIT] ${followUp ? "context-aware" : "message-only"} | key=${cacheKey.slice(0, 24)}...`);
         return cached;
       }
     }
 
-    console.log(`[LLM CALL] model=${config.LLM_MODEL} | historyMessages=${recentHistory.length} | cache=${redis ? "miss" : "disabled"}`);
+    console.log(`[LLM CALL] model=${config.LLM_MODEL} | history=${recentHistory.length} | mode=${followUp ? "follow-up" : "standalone"} | cache=${redis ? "miss" : "disabled"}`);
 
     const response = await openai.chat.completions.create({
       model: config.LLM_MODEL,
