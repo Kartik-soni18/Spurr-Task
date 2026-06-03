@@ -1,6 +1,7 @@
 # Render Blueprint — deploys both backend and frontend automatically
 # Usage: Render Dashboard → Blueprints → New Blueprint Instance → connect repo
-# After deploy, manually set OPENAI_API_KEY in the backend service env vars.
+# After deploy, manually set OPENAI_API_KEY, OPENAI_BASE_URL, and REDIS_URL
+# in the Render Dashboard when prompted by the Blueprint wizard.
 
 services:
   - type: web
@@ -20,7 +21,7 @@ services:
       - key: OPENAI_MODEL
         value: gpt-4o-mini
       - key: OPENAI_BASE_URL
-        value: https://api.openai.com/v1
+        sync: false  # e.g. https://api.openai.com/v1 or https://api.together.xyz/v1
       - key: MAX_TOKENS
         value: "500"
       - key: FRONTEND_URL
