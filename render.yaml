@@ -6,6 +6,7 @@ services:
   - type: web
     name: spur-chat-backend
     runtime: node
+    plan: free
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
@@ -26,10 +27,8 @@ services:
         value: "*"  # Update after frontend deploy, then redeploy backend
       - key: REDIS_URL
         sync: false  # Optional: set if using Upstash Redis
-    disk:
-      name: sqlite-data
-      mountPath: /opt/render/project/src/backend
-      sizeGB: 1
+    # Note: No persistent disk — free tier only. SQLite data is lost on redeploy.
+    # For production, add a disk (requires paid plan) or switch to Render Postgres.
 
   - type: web
     name: spur-chat-frontend

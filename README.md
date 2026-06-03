@@ -316,6 +316,22 @@ Health check. Returns `{ "status": "ok" }`.
 
 ---
 
+## Deployment Notes
+
+### Render (Free Tier)
+
+This project includes a `render.yaml` Blueprint for easy deployment on [Render](https://render.com).
+
+> ⚠️ **SQLite on Free Tier**: The backend uses SQLite for simplicity. On Render's free tier, the filesystem is **ephemeral** — all chat data is **lost on every redeploy or service restart**. This is acceptable for an MVP/demo, but for production you should either:
+> - Add a persistent disk to the backend service (requires a paid instance), or
+> - Switch to [Render Postgres](https://render.com/docs/databases) (free tier available)
+
+### Environment Variables
+
+After the initial Blueprint deploy, manually set `OPENAI_API_KEY` in the Render Dashboard for the backend service.
+
+---
+
 ## Trade-offs & "If I Had More Time..."
 
 ### What's intentionally simple
