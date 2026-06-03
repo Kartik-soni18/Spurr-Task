@@ -8,6 +8,7 @@ import {
 } from "../services/conversation.js";
 import { generateReply } from "../services/llm.js";
 import { getRedisClient } from "../redis.js";
+import { sanitizeUserInput, detectPromptInjection } from "../utils/guardrails.js";
 import type { Request, Response, NextFunction } from "express";
 
 const RATE_LIMIT_MAX = 20; // requests per window
@@ -74,14 +75,24 @@ router.post(
         throw error;
       }
 
-      const { message, sessionId } = parseResult.data;
-      console.log(`[REQUEST] msgLen=${message.length} | existingSession=${sessionId ? "yes" : "no"}`);
+      let { message } = parseResult.data;
+      const { sessionId } = parseResult.data;
+
+      // Sanitize input: strip control chars, normalize whitespace
+      message = sanitizeUserInput(message);
 
       if (!message || message.length === 0) {
         const error = new Error("Message is required and must be between 1 and 2000 characters");
         (error as Error & { statusCode: number }).statusCode = 400;
         throw error;
       }
+
+      // Log prompt injection attempts (don't block, but monitor)
+      if (detectPromptInjection(message)) {
+        console.warn(`[GUARDRAIL] Prompt injection detected | sessionId=${sessionId || "new"} | msg=${message.slice(0, 100)}...`);
+      }
+
+      console.log(`[REQUEST] msgLen=${message.length} | existingSession=${sessionId ? "yes" : "no"}`);
 
       let conversationId: string;
 

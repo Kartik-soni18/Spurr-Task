@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import type { ChatMessage } from "../types.js";
 import { buildSystemPrompt } from "./faq.js";
 import { getRedisClient } from "../redis.js";
+import { trimHistoryByTokenBudget, validateLLMResponse } from "../utils/guardrails.js";
 
 export class LLMError extends Error {
   statusCode: number;
@@ -80,13 +81,25 @@ function buildCacheKey(
   return `llm_cache:msg:${hash}`;
 }
 
+const LLM_TIMEOUT_MS = 15000; // 15 seconds backend timeout
+const MAX_CONTEXT_TOKENS = 120000; // gpt-4o-mini has 128K, leave headroom
+
 export async function generateReply(
   history: ChatMessage[],
   userMessage: string
 ): Promise<string> {
   try {
     const systemPrompt = buildSystemPrompt();
-    const recentHistory = history.slice(-10);
+
+    // Token budget guard: trim history if approaching context window limit
+    const recentHistoryRaw = history.slice(-10);
+    const recentHistory = trimHistoryByTokenBudget(
+      recentHistoryRaw,
+      systemPrompt,
+      userMessage,
+      config.MAX_TOKENS,
+      MAX_CONTEXT_TOKENS
+    ) as ChatMessage[];
 
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: systemPrompt },
@@ -111,16 +124,40 @@ export async function generateReply(
 
     console.log(`[LLM CALL] model=${config.LLM_MODEL} | history=${recentHistory.length} | mode=${followUp ? "follow-up" : "standalone"} | cache=${redis ? "miss" : "disabled"}`);
 
+    // Backend timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+
     const response = await openai.chat.completions.create({
       model: config.LLM_MODEL,
       messages,
       max_tokens: config.MAX_TOKENS,
       temperature: 0.7,
-    });
+    }, { signal: controller.signal as AbortSignal });
 
-    const content = response.choices[0]?.message?.content;
+    clearTimeout(timeoutId);
+
+    const choice = response.choices[0];
+    if (!choice) {
+      throw new LLMError("No response from LLM", 500);
+    }
+
+    // Handle content filter refusal gracefully
+    if (choice.message.refusal) {
+      console.warn(`[LLM REFUSAL] ${choice.message.refusal}`);
+      return "I'm sorry, I can't answer that. If you need assistance, please contact support@shopspur.com.";
+    }
+
+    const content = choice.message.content;
     if (!content) {
       throw new LLMError("Empty response from LLM", 500);
+    }
+
+    // Validate response before returning
+    const validation = validateLLMResponse(content);
+    if (!validation.valid) {
+      console.error(`[LLM VALIDATION FAILED] reason=${validation.reason}`);
+      throw new LLMError("Invalid response from LLM", 500);
     }
 
     if (redis) {
@@ -153,6 +190,12 @@ export async function generateReply(
       }
 
       throw new LLMError(error.message || "LLM API error", status || 500);
+    }
+
+    // Handle backend timeout abort
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("[LLM] Request timed out after", LLM_TIMEOUT_MS, "ms");
+      throw new ServiceUnavailableError();
     }
 
     if (
