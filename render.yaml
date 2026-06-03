@@ -31,8 +31,9 @@ services:
       mountPath: /opt/render/project/src/backend
       sizeGB: 1
 
-  - type: static
+  - type: web
     name: spur-chat-frontend
+    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: build
