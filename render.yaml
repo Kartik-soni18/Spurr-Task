@@ -25,7 +25,7 @@ services:
       - key: MAX_TOKENS
         value: "500"
       - key: FRONTEND_URL
-        value: "*"  # Update after frontend deploy, then redeploy backend
+        value: https://spur-chat-frontend-wnpt.onrender.com
       - key: REDIS_URL
         sync: false  # Optional: set if using Upstash Redis
     # Note: No persistent disk — free tier only. SQLite data is lost on redeploy.
@@ -39,4 +39,4 @@ services:
     staticPublishPath: build
     envVars:
       - key: VITE_API_URL
-        value: https://spur-chat-backend.onrender.com  # Update after backend deploy
+        value: https://spur-chat-backend-dqy8.onrender.com
